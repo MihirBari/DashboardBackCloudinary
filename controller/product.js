@@ -9,12 +9,12 @@ const fs = require('fs');
 const unlinkAsync = promisify(fs.unlink);
 
 cloudinary.config({
-  cloud_name: "dirtvhx2i",
-  api_key: "621763112517878",
-  api_secret: "dFRdG40UbaDss-igOJBUOBwBCbw",
+  cloud_name: "dgcxd0kkk",
+  api_key: "239697659531164",
+  api_secret: "iV6w3B6G1cbFzAh-lSWWsxSbZHI",
 });
 
-cloudinaryUrl = 'cloudinary://621763112517878:dFRdG40UbaDss-igOJBUOBwBCbw@dirtvhx2i';
+cloudinaryUrl = 'cloudinary://239697659531164:iV6w3B6G1cbFzAh-lSWWsxSbZHI@dgcxd0kkk';
 cloudinary.config(cloudinaryUrl);
 
 const poolQuery = (query, values) => {

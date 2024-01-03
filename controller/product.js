@@ -234,7 +234,7 @@ const oneProduct = async (req, res) => {
 
       // Construct Cloudinary URLs for images using the public IDs
       const cloudinaryUrls = productDetails.product_image.map((publicId) => {
-        return `https://res.cloudinary.com/dirtvhx2i/image/upload/${publicId}`;
+        return `https://res.cloudinary.com/dgcxd0kkk/image/upload/${publicId}`;
       });
 
       // Send product details with image URLs to the frontend

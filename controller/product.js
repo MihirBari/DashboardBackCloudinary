@@ -178,9 +178,9 @@ const inventory = (req, res) => {
   FROM
     products p
   Left JOIN
-    Users u ON u.id = p.user_id
+    users u ON u.id = p.user_id
   LEFT JOIN
-    Users uu ON uu.id = p.uuser_id
+    users uu ON uu.id = p.uuser_id
 `;
 
   pool.query(inventory, (error, results) => {

@@ -1,8 +1,10 @@
 const { pool } = require("../database");
 
-const showDealer = (req,res) => {
+const showExpense = (req,res) => {
 
-    const dealer = `SELECT id,debitor_name, debitor_Date,paid_status, product_type ,debitor_Amount, debitor_paid_by, total_product, other_cost,remark,created_at,updated_at FROM debitors`;
+    const dealer = `SELECT 
+    id,	name,	date,	amount,	paid_status,	paid_by, remarks, created_at,	updated_at	    
+    FROM expense`;
 
     pool.query(dealer, (error, results) => {
       if (error) {
@@ -16,11 +18,10 @@ const showDealer = (req,res) => {
 
 }
 
-const showOneDealer = (req, res) => {
+const showOneExpense = (req, res) => {
   const dealerQuery = `
-    SELECT id, debitor_name, debitor_Date, debitor_Amount, debitor_paid_by, 
-           total_product, other_cost, created_at, updated_at,paid_status, product_type,remark
-    FROM debitors
+    SELECT id,	name,	date,	amount,	paid_status,	paid_by, remarks
+    FROM expense
     WHERE id = ?
   `;
   pool.query(dealerQuery, [req.params.id], (error, results) => {
@@ -34,21 +35,19 @@ const showOneDealer = (req, res) => {
   });
 };
 
-const addDealer = (req,res) => {
-    const addDealer = `Insert into debitors
-     (debitor_name, debitor_Date, debitor_Amount, debitor_paid_by,paid_status,remark, product_type, total_product, other_cost,created_at)
-     values (?,?,?,?,?,?,?,?,?, NOW())
+const addExpense = (req,res) => {
+    const addDealer = `Insert into expense
+     (name,	date,	amount,	paid_status,	paid_by, remarks, created_at)
+     values (?,?,?,?,?,?, NOW())
      `
     const value = [ 
-        req.body.debitor_name,
-        req.body.debitor_Date,
-        req.body.debitor_Amount,
-        req.body.debitor_paid_by,
+        req.body.name,
+        req.body.date,
+        req.body.amount,
         req.body.paid_status, 
-        req.body.remark,
-        req.body.product_type,
-        req.body.total_product,
-        req.body.other_cost]
+        req.body.paid_by,
+        req.body.remarks,
+      ]
 
     pool.query(addDealer, value ,(error, results) => {
         if (error) {
@@ -61,33 +60,27 @@ const addDealer = (req,res) => {
       });
 }
 
-const editDealer = (req, res) => {
+const editExpense = (req, res) => {
   const updateDealer = `
-    UPDATE debitors
+    UPDATE expense
     SET
-      debitor_name = ?,
-      debitor_Date = ?,
-      debitor_Amount = ?,
-      debitor_paid_by = ?,
-      paid_status = ?, 
-      product_type = ?,
-      total_product = ?,
-      other_cost = ?,
-      remark= ?,
+    name = ?,
+    date = ?,
+    amount = ?,
+    paid_status = ?,
+    paid_by = ?, 
+    remarks = ?,
       updated_at = NOW()
     WHERE
       id = ?;`;
 
   const values = [
-    req.body.debitor_name,
-    req.body.debitor_Date,
-    req.body.debitor_Amount,
-    req.body.debitor_paid_by,
+    req.body.name,
+    req.body.date,
+    req.body.amount,
     req.body.paid_status, 
-    req.body.product_type,
-    req.body.total_product,
-    req.body.other_cost,
-    req.body.remark,
+    req.body.paid_by,
+    req.body.remarks,
     req.params.id 
   ];
 
@@ -104,8 +97,8 @@ const editDealer = (req, res) => {
 };
 
 
-const deleteSeller = (req, res) => {
-  const query = 'DELETE FROM debitors WHERE id = ?';
+const deleteExpense = (req, res) => {
+  const query = 'DELETE FROM expense WHERE id = ?';
   const debitorName = req.body.id;
 
   pool.query(query, [debitorName], (error, results) => {
@@ -123,4 +116,4 @@ const deleteSeller = (req, res) => {
   });
 };
 
-module.exports = {showDealer,addDealer,deleteSeller,editDealer,showOneDealer};
+module.exports = {showExpense,showOneExpense,addExpense,editExpense,deleteExpense};

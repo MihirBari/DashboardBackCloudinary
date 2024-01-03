@@ -8,6 +8,7 @@ const session = require('express-session');
 const userRoute = require("./routes/user")
 const prodRoute = require("./routes/product")
 const dealRoute = require("./routes/dealer")
+const expenseRoute = require("./routes/expesnse")
 const orderRoute = require("./routes/order")
 const dashboardRoute = require("./routes/dashboard")
 
@@ -15,7 +16,7 @@ const dashboardRoute = require("./routes/dashboard")
 app.use(express.json());
 app.use(
   cors({
-    origin: ['http://localhost:3000'],
+    origin: ['http://kadbae.in'],
     credentials: true,
   })
 );
@@ -57,6 +58,7 @@ process.on("unhandleRejection", (err) => {
 app.use("/api/user",userRoute)
 app.use("/api/prod",prodRoute)
 app.use("/api/dealer",dealRoute)
+app.use("/api/expense",expenseRoute)
 app.use("/api/order", orderRoute)
 app.use("/api/dashboard", dashboardRoute)
 

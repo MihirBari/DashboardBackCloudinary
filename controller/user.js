@@ -168,10 +168,15 @@ const deleteUser = (req,res) => {
 }
 
 const logout = (req, res) => {
-  res.cookie("token");
+  res.clearCookie("token", {
+    httpOnly: true,
+    expires: new Date(0), // Expire the cookie immediately
+    sameSite: "none", // Adjust accordingly based on your requirements
+  });
+
   return res.json({
     status: "Success",
   });
-}
+};
 
 module.exports = { login,getUserData,getOneUserData,addUser,deleteUser,logout,editUser };

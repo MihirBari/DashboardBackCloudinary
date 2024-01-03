@@ -33,13 +33,14 @@ const order = async (req, res) => {
         await connection.query(
           `
           INSERT INTO order_items (
-            creditor_name, product_id, ${sizeColumn}, returned, amount_sold, amount_condition, paid_by,created_at
-          ) VALUES (?, ?, ?, ?,?, ?, ?,Now());
+            creditor_name, product_id, ${sizeColumn},Total_items, returned, amount_sold, amount_condition, paid_by,created_at
+          ) VALUES (?, ?, ?, ?,?, ?,?, ?,Now());
           `,
           [
             creditor_name,
             product_id,
             sizeQuantity,
+            sizeColumn,
             returned,
             amount_sold,
             amount_condition,
@@ -376,6 +377,7 @@ const viewOrder = async (req, res) => {
       oi.creditor_name,
       oi.product_id,
       p.product_name,
+      oi.Total_items,
       oi.s,
       oi.m,
       oi.l,
@@ -424,6 +426,7 @@ const viewOneOrder = async (req, res) => {
       oi.returned,
       oi.amount_sold,
       oi.amount_condition,
+      oi.Total_items,
       oi.paid_by,
       oi.created_at,
       oi.update_at

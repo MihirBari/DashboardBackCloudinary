@@ -1,11 +1,11 @@
 const { pool } = require("../database");
 const multer = require("multer");
 const path = require("path");
-const Jimp = require('jimp');
+const Jimp = require("jimp");
 const { query } = require("express");
 const cloudinary = require("cloudinary").v2;
-const { promisify } = require('util');
-const fs = require('fs');
+const { promisify } = require("util");
+const fs = require("fs");
 const unlinkAsync = promisify(fs.unlink);
 
 cloudinary.config({
@@ -66,107 +66,6 @@ const uploadAsync = async (req, res) => {
     });
   });
 };
-
-const inventory = (req, res) => {
-  const inventory = `
-  SELECT
-    p.product_id,
-    p.product_name,
-    p.Description,
-    p.Stock,
-    p.s,
-    p.m,
-    p.l,
-    p.xl,
-    p.xxl,
-    p.xxxl,
-    p.xxxxl,
-    p.xxxxxl,
-    p.xxxxxxl,
-    p.Stock,
-    p.product_price,
-    p.Cost_price,
-    p.product_type,
-    p.other_cost,
-    p.Final_cost,
-    p.created_at,
-    p.updated_at,
-    u.name as Created_by,
-    uu.name as Updated_by
-  FROM
-    products p
-  Left JOIN
-    Users u ON u.id = p.user_id
-  LEFT JOIN
-    Users uu ON uu.id = p.uuser_id
-`;
-
-pool.query(inventory, (error, results) => {
-  if (error) {
-    console.error("Error executing query:", error);
-    return res.status(500).json({ error: "Internal Server Error" });
-  }
-  res.json(results);
-});
-};
-
-const oneProduct = async (req, res) => {
-  const inventory = `
-    SELECT
-      product_id,
-      product_name,
-      Description,
-      Stock,
-      s, m, l, xl, xxl, xxxl, xxxxl, xxxxxl, xxxxxxl,
-      Stock,
-      product_price,
-      Cost_price,
-      product_type,
-      product_image,
-      other_cost,
-      Final_cost
-    FROM products
-    WHERE product_id = ?;
-  `;
-
-  try {
-    const results = await poolQuery(inventory, [req.params.product_id]);
-
-    if (results.length === 1) {
-      const productDetails = results[0];
-
-      // Parse the product_image back to an array
-      if (productDetails.product_image) {
-        try {
-          productDetails.product_image = JSON.parse(productDetails.product_image);
-        } catch (jsonParseError) {
-          console.error("Error parsing product_image:", jsonParseError.message);
-          return res.status(500).json({ error: "Error parsing product_image" });
-        }
-      } else {
-        // Set a default image path if product_image is null
-        productDetails.product_image = ["path/to/default/image.jpg"];
-      }
-
-      // Construct Cloudinary URLs for images using the public IDs
-      const cloudinaryUrls = productDetails.product_image.map((publicId) => {
-        return `https://res.cloudinary.com/dirtvhx2i/image/upload/${publicId}`;
-      });
-
-      // Send product details with image URLs to the frontend
-      res.status(200).json({
-        ...productDetails,
-        product_image: cloudinaryUrls,
-      });
-    } else {
-      return res.status(404).json({ error: "Product not found" });
-    }
-  } catch (error) {
-    console.error("Error executing query:", error);
-    return res.status(500).json({ error: "Internal Server Error" });
-  }
-};
-
 
 const addImage = async (req, res) => {
   try {
@@ -235,13 +134,12 @@ VALUES(
         JSON.stringify(product.product_image),
         product.other_cost,
         product.Final_cost,
-        userId
+        userId,
       ];
 
       console.log("values: ", values);
 
       await pool.query(prod, values);
-
     }
 
     res.json({ message: "Products added successfully" });
@@ -251,6 +149,107 @@ VALUES(
   }
 };
 
+const inventory = (req, res) => {
+  const inventory = `
+  SELECT
+    p.product_id,
+    p.product_name,
+    p.Description,
+    p.Stock,
+    p.s,
+    p.m,
+    p.l,
+    p.xl,
+    p.xxl,
+    p.xxxl,
+    p.xxxxl,
+    p.xxxxxl,
+    p.xxxxxxl,
+    p.Stock,
+    p.product_price,
+    p.Cost_price,
+    p.product_type,
+    p.other_cost,
+    p.Final_cost,
+    p.created_at,
+    p.updated_at,
+    u.name as Created_by,
+    uu.name as Updated_by
+  FROM
+    products p
+  Left JOIN
+    Users u ON u.id = p.user_id
+  LEFT JOIN
+    Users uu ON uu.id = p.uuser_id
+`;
+
+  pool.query(inventory, (error, results) => {
+    if (error) {
+      console.error("Error executing query:", error);
+      return res.status(500).json({ error: "Internal Server Error" });
+    }
+    res.json(results);
+  });
+};
+
+const oneProduct = async (req, res) => {
+  const inventory = `
+    SELECT
+      product_id,
+      product_name,
+      Description,
+      Stock,
+      s, m, l, xl, xxl, xxxl, xxxxl, xxxxxl, xxxxxxl,
+      Stock,
+      product_price,
+      Cost_price,
+      product_type,
+      product_image,
+      other_cost,
+      Final_cost
+    FROM products
+    WHERE product_id = ?;
+  `;
+
+  try {
+    const results = await poolQuery(inventory, [req.params.product_id]);
+
+    if (results.length === 1) {
+      const productDetails = results[0];
+
+      // Parse the product_image back to an array
+      if (productDetails.product_image) {
+        try {
+          productDetails.product_image = JSON.parse(
+            productDetails.product_image
+          );
+        } catch (jsonParseError) {
+          console.error("Error parsing product_image:", jsonParseError.message);
+          return res.status(500).json({ error: "Error parsing product_image" });
+        }
+      } else {
+        // Set a default image path if product_image is null
+        productDetails.product_image = ["path/to/default/image.jpg"];
+      }
+
+      // Construct Cloudinary URLs for images using the public IDs
+      const cloudinaryUrls = productDetails.product_image.map((publicId) => {
+        return `https://res.cloudinary.com/dirtvhx2i/image/upload/${publicId}`;
+      });
+
+      // Send product details with image URLs to the frontend
+      res.status(200).json({
+        ...productDetails,
+        product_image: cloudinaryUrls,
+      });
+    } else {
+      return res.status(404).json({ error: "Product not found" });
+    }
+  } catch (error) {
+    console.error("Error executing query:", error);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
+};
 
 const updateProduct = async (req, res) => {
   try {
@@ -281,7 +280,7 @@ const updateProduct = async (req, res) => {
         Final_cost = ?, 
         uuser_id = ?,
         product_type = ?,
-        ${req.body.data[0].new_product_image ? 'product_image = ?,' : ''}
+        ${req.body.data[0].product_image ? "product_image = ?," : ""}
         updated_at = NOW()
       WHERE product_id = ?
     `;
@@ -297,14 +296,6 @@ const updateProduct = async (req, res) => {
         (isNaN(+product.xxxxl) ? 0 : +product.xxxxl) +
         (isNaN(+product.xxxxxl) ? 0 : +product.xxxxxl) +
         (isNaN(+product.xxxxxxl) ? 0 : +product.xxxxxxl);
-
-      if (product.new_product_image) {
-        const cloudinaryResponse = await cloudinary.uploader.upload(
-          req.body.new_product_image.tempFilePath
-        );
-        const newImageURL = cloudinaryResponse.secure_url;
-        product.product_image = [newImageURL];
-      }
 
       const values = [
         product.product_name,
@@ -325,11 +316,13 @@ const updateProduct = async (req, res) => {
         product.Final_cost,
         userId,
         product.product_type,
-        ...(product.product_image ? [JSON.stringify(product.product_image)] : []),
+        ...(product.product_image
+          ? [JSON.stringify(product.product_image)]
+          : []),
         req.params.product_id,
       ];
- 
-      console.log(values)
+
+      console.log(values);
       await pool.query(updateQuery, values);
     }
 
@@ -339,7 +332,6 @@ const updateProduct = async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
-
 
 const productId = async (req, res) => {
   try {
@@ -377,52 +369,29 @@ const deleteProduct = (req, res) => {
 };
 
 const sendImage = async (req, res) => {
-  const query = 'SELECT product_id, product_image FROM products';
+  const query = "SELECT product_id, product_image FROM products";
 
   pool.query(query, async (err, results) => {
     if (err) {
-      console.error('Error executing the SQL query:', err);
-      return res.status(500).json({ success: false, message: 'Internal Server Error' });
+      console.error("Error executing the SQL query:", err);
+      return res
+        .status(500)
+        .json({ success: false, message: "Internal Server Error" });
     }
 
-    const images = await Promise.all(results.map(async (result) => {
-      if (!result.product_image) {
-        console.error('Product image is null for Product ID:', result.product_id);
-        return null;
+    const productData = results.map((result) => {
+      if (result.product_image) {
+        const parsedIds = JSON.parse(result.product_image);
+        const publicId = parsedIds[0]; // Take only the first public ID
+        const productId = result.product_id;
+        return { publicId, productId };
       }
+      return null;
+    });
 
-      try {
-        // Parse the product_image back to an array
-        const publicIds = JSON.parse(result.product_image);
-
-        // Take only the first publicId
-        const firstPublicId = publicIds[0];
-
-        // Construct Cloudinary URL for the image
-        const cloudinaryUrl = `https://res.cloudinary.com/dirtvhx2i/image/upload/${firstPublicId}`;
-
-        // Use Jimp to resize and compress the image
-        const image = await Jimp.read(cloudinaryUrl);
-        await image.resize(500, Jimp.AUTO).quality(80);
-        const compressedImageBuffer = await image.getBufferAsync(Jimp.MIME_JPEG);
-
-        // Convert the compressed image buffer to base64
-        const base64Image = compressedImageBuffer.toString('base64');
-
-        return {
-          product_id: result.product_id,
-          image: base64Image,
-        };
-      } catch (error) {
-        console.error('Error processing image:', error);
-        return null;
-      }
-    }));
-
-    res.json(images.filter(Boolean));
+    res.json(productData.filter(Boolean));
   });
 };
-
 
 module.exports = {
   inventory,
@@ -432,5 +401,5 @@ module.exports = {
   oneProduct,
   updateProduct,
   productId,
-  sendImage
+  sendImage,
 };

@@ -115,9 +115,11 @@ const updateOrder1 = async (req, res) => {
       amount_sold,
       amount_condition,
       paid_by,
+      product_id
     } = req.body;
 
-    const { product_id } = req.params;
+    const { order_id } = req.params;
+    console.log(req.params);
 
     pool.getConnection((err, connection) => {
       if (err) {
@@ -134,12 +136,22 @@ const updateOrder1 = async (req, res) => {
           const sizeColumn = size ? size.toLowerCase() : null;
           const sizeQuantity = 1;
 
+          console.log("Executing UPDATE query with the following values:");
+          console.log("creditor_name:", creditor_name);
+          console.log("sizeColumn:", sizeColumn);
+          console.log("returned:", returned);
+          console.log("amount_sold:", amount_sold);
+          console.log("amount_condition:", amount_condition);
+          console.log("paid_by:", paid_by);
+          console.log("Order_id:", order_id);
+
+
           await connection.query(
             `
             UPDATE order_items 
             SET creditor_name = ?, ${sizeColumn} = ?,
             returned = ?, amount_sold = ?, amount_condition = ?,paid_by = ?, update_at = NOW()
-            WHERE product_id = ?;
+            WHERE order_id = ?;
             `,
             [
               creditor_name,
@@ -148,7 +160,7 @@ const updateOrder1 = async (req, res) => {
               amount_sold,
               amount_condition,
               paid_by,
-              product_id,
+              order_id,
             ],
             async (insertErr) => {
               if (insertErr) {
@@ -249,7 +261,6 @@ const updateOrder1 = async (req, res) => {
     return res.status(500).json({ error: "Unexpected error" });
   }
 };
-
 
 const updateOrder = async (req, res) => {
   const {
@@ -358,8 +369,6 @@ const updateOrder = async (req, res) => {
   });
 };
 
-
-
 const filterNullValues = (obj) => {
   const filteredObj = {};
   for (const key in obj) {
@@ -428,6 +437,7 @@ const viewOneOrder = async (req, res) => {
       oi.amount_condition,
       oi.Total_items,
       oi.paid_by,
+      oi.product_id,
       oi.created_at,
       oi.update_at
     FROM
@@ -435,10 +445,10 @@ const viewOneOrder = async (req, res) => {
     JOIN
       products p ON p.product_id = oi.product_id
     WHERE
-      oi.product_id = ?;
+      oi.order_id = ?;
   `;
 
-  pool.query(inventoryQuery, [req.params.product_id], (error, results) => {
+  pool.query(inventoryQuery, [req.params.order_id], (error, results) => {
     if (error) {
       console.error("Error executing query:", error);
       return res.status(500).json({ error: "Error executing query" });
@@ -520,8 +530,6 @@ const deleteOrder = (req, res) => {
     });
   });
 };
-
-
 
 module.exports = { order, updateOrder,updateOrder1, viewOrder, deleteOrder,viewOneOrder };
 

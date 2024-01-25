@@ -1,6 +1,7 @@
 const express = require("express");
 const { inventory, addProduct, deleteProduct, addImage, oneProduct, updateProduct,productId, sendImage } = require("../controller/product");
 const { search } = require("../controller/search");
+const { addHistory } = require("../controller/History");
 
 const router = express.Router();
 
@@ -8,6 +9,7 @@ const router = express.Router();
 router.get("/inventory", inventory);
 router.get(`/Product/:product_id`, oneProduct);
 router.post("/addProduct", addProduct);
+router.post("/addHistory", addHistory);
 router.get("/productId", productId);
 router.post("/Search", search);
 router.delete("/delete", deleteProduct);

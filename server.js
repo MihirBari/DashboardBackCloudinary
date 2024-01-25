@@ -11,7 +11,8 @@ const dealRoute = require("./routes/dealer")
 const expenseRoute = require("./routes/expesnse")
 const orderRoute = require("./routes/order")
 const dashboardRoute = require("./routes/dashboard")
-
+const inventoryRoute = require("./routes/inventory")
+const marketRoute = require("./routes/market")
 
 app.use(express.json());
 app.use(
@@ -61,7 +62,8 @@ app.use("/api/dealer",dealRoute)
 app.use("/api/expense",expenseRoute)
 app.use("/api/order", orderRoute)
 app.use("/api/dashboard", dashboardRoute)
-
+app.use("/api/inventory", inventoryRoute)
+app.use("/api/market", marketRoute)
 
 
 //errorhandling

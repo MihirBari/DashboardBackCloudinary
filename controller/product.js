@@ -17,6 +17,7 @@ cloudinary.config({
 cloudinaryUrl = 'cloudinary://239697659531164:iV6w3B6G1cbFzAh-lSWWsxSbZHI@dgcxd0kkk';
 cloudinary.config(cloudinaryUrl);
 
+
 const poolQuery = (query, values) => {
   return new Promise((resolve, reject) => {
     pool.query(query, values, (error, results) => {
@@ -90,16 +91,35 @@ const addProduct = async (req, res) => {
   }
 
   const userId = req.body.data[0].userId;
-  console.log(userId);
 
   try {
+    await pool.query('START TRANSACTION');
+
+
     const prod = `
-    INSERT INTO products
-  (product_id, product_name, Description, s, m, l, xl, xxl, xxxl, xxxxl, xxxxxl, xxxxxxl, stock,
-  product_price, Cost_price, product_type, product_image, other_cost, Final_cost, user_id, created_at)
-VALUES( 
-  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW()
-)
+      INSERT INTO products
+      (
+        product_id	,
+         product_name,	
+        Description	,
+        s	,
+        m	,
+        l	,
+        xl	,
+        xxl	,
+        xxxl	,
+        xxxxl	,
+        xxxxxl	,
+        xxxxxxl	,
+        Stock	,
+        product_price	,
+        Cost_price	,
+        product_type	,
+        product_image	,
+        other_cost	,
+        Final_cost,	
+        user_id,status, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?, ?, NOW())
     `;
 
     for (const product of req.body.data) {
@@ -135,15 +155,19 @@ VALUES(
         product.other_cost,
         product.Final_cost,
         userId,
+        product.status,
       ];
-
-      console.log("values: ", values);
+      // Log the actual SQL queries
+      console.log("prod query: ", prod, values);
 
       await pool.query(prod, values);
+  
     }
 
+    await pool.query('COMMIT');
     res.json({ message: "Products added successfully" });
   } catch (error) {
+    await pool.query('ROLLBACK');
     console.error("Error adding products:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
@@ -173,14 +197,11 @@ const inventory = (req, res) => {
     p.Final_cost,
     p.created_at,
     p.updated_at,
-    u.name as Created_by,
-    uu.name as Updated_by
+    p.status,
+    p.product_image
   FROM
     products p
-  Left JOIN
-    Users u ON u.id = p.user_id
-  LEFT JOIN
-    Users uu ON uu.id = p.uuser_id
+
 `;
 
   pool.query(inventory, (error, results) => {
@@ -206,7 +227,8 @@ const oneProduct = async (req, res) => {
       product_type,
       product_image,
       other_cost,
-      Final_cost
+      Final_cost,
+      status
     FROM products
     WHERE product_id = ?;
   `;
@@ -252,14 +274,17 @@ const oneProduct = async (req, res) => {
 };
 
 const updateProduct = async (req, res) => {
+
+  if (!req.body.data || !Array.isArray(req.body.data)) {
+    return res.status(400).json({ error: "Invalid data format" });
+  }
+
+  const userId = req.body.userId;
+
   try {
-    if (!req.body.data || !Array.isArray(req.body.data)) {
-      return res.status(400).json({ error: "Invalid data format" });
-    }
+    await pool.query('START TRANSACTION');
 
-    const userId = req.body.userId;
-
-    const updateQuery = `
+    const prod = `
       UPDATE products
       SET 
         product_name = ?,
@@ -280,6 +305,7 @@ const updateProduct = async (req, res) => {
         Final_cost = ?, 
         uuser_id = ?,
         product_type = ?,
+        status = ? ,
         ${req.body.data[0].product_image ? "product_image = ?," : ""}
         updated_at = NOW()
       WHERE product_id = ?
@@ -316,19 +342,26 @@ const updateProduct = async (req, res) => {
         product.Final_cost,
         userId,
         product.product_type,
+        product.status,
         ...(product.product_image
           ? [JSON.stringify(product.product_image)]
           : []),
         req.params.product_id,
       ];
 
-      console.log(values);
-      await pool.query(updateQuery, values);
+
+      console.log("prod query: ", prod, values);
+
+
+      await pool.query(prod, values);
+
     }
 
-    res.json({ message: "Products updated successfully" });
+    await pool.query('COMMIT');
+    res.json({ message: "Products added successfully" });
   } catch (error) {
-    console.error("Error updating products:", error);
+    await pool.query('ROLLBACK');
+    console.error("Error adding products:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 };

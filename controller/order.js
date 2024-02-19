@@ -9,6 +9,8 @@ const order = async (req, res) => {
     amount_sold,
     amount_condition,
     paid_by,
+    bank_payment,
+    city
   } = req.body;
 
   console.log("Order received on the server:", req.body);
@@ -28,13 +30,13 @@ const order = async (req, res) => {
 
       try {
         const sizeColumn = size ? size.toLowerCase() : null;
-        const sizeQuantity =  1;
+        const sizeQuantity = 1;
         console.log("Order received:", req.body);
         await connection.query(
           `
           INSERT INTO order_items (
-            creditor_name, product_id, ${sizeColumn},Total_items, returned, amount_sold, amount_condition, paid_by,created_at
-          ) VALUES (?, ?, ?, ?,?, ?,?, ?,Now());
+            creditor_name, product_id, ${sizeColumn},Total_items, returned, amount_sold, amount_condition,bank_payment, city, paid_by,created_at
+          ) VALUES (?, ?, ?, ?,?, ?,?,?,?, ?,Now());
           `,
           [
             creditor_name,
@@ -44,7 +46,9 @@ const order = async (req, res) => {
             returned,
             amount_sold,
             amount_condition,
-            paid_by
+            bank_payment,
+            city,
+            paid_by,
           ],
           (insertErr) => {
             if (insertErr) {
@@ -64,7 +68,7 @@ const order = async (req, res) => {
                     stock = stock - 1
                     WHERE product_id = ?;
                `,
-              [ product_id],
+              [product_id],
               (updateErr) => {
                 if (updateErr) {
                   return connection.rollback(() => {
@@ -114,8 +118,10 @@ const updateOrder1 = async (req, res) => {
       returned,
       amount_sold,
       amount_condition,
+      bank_payment,
+      city,
       paid_by,
-      product_id
+      product_id,
     } = req.body;
 
     const { order_id } = req.params;
@@ -123,7 +129,9 @@ const updateOrder1 = async (req, res) => {
 
     pool.getConnection((err, connection) => {
       if (err) {
-        return res.status(500).json({ error: "Error getting database connection" });
+        return res
+          .status(500)
+          .json({ error: "Error getting database connection" });
       }
 
       connection.beginTransaction(async (beginErr) => {
@@ -145,20 +153,21 @@ const updateOrder1 = async (req, res) => {
           console.log("paid_by:", paid_by);
           console.log("Order_id:", order_id);
 
-
           await connection.query(
             `
-            UPDATE order_items 
-            SET creditor_name = ?, ${sizeColumn} = ?,
-            returned = ?, amount_sold = ?, amount_condition = ?,paid_by = ?, update_at = NOW()
-            WHERE order_id = ?;
-            `,
+    UPDATE order_items 
+    SET creditor_name = ?, ${sizeColumn} = ?,
+    returned = ?, amount_sold = ?, amount_condition = ?, bank_payment = ?, city = ?, paid_by = ?, update_at = NOW()
+    WHERE order_id = ?;
+    `,
             [
               creditor_name,
               sizeQuantity,
               returned,
               amount_sold,
               amount_condition,
+              bank_payment,
+              city,
               paid_by,
               order_id,
             ],
@@ -167,10 +176,12 @@ const updateOrder1 = async (req, res) => {
                 console.error("Error updating order_items:", insertErr);
                 connection.rollback();
                 connection.release();
-                return res.status(500).json({ error: "Error updating order_items" });
+                return res
+                  .status(500)
+                  .json({ error: "Error updating order_items" });
               }
 
-              if (returned === 'Yes') {
+              if (returned === "Yes") {
                 try {
                   await connection.query(
                     `
@@ -186,7 +197,9 @@ const updateOrder1 = async (req, res) => {
                       console.error("Error committing transaction:", commitErr);
                       connection.rollback();
                       connection.release();
-                      return res.status(500).json({ error: "Error committing transaction" });
+                      return res
+                        .status(500)
+                        .json({ error: "Error committing transaction" });
                     }
                     connection.release();
                     return res.status(200).json({
@@ -195,12 +208,17 @@ const updateOrder1 = async (req, res) => {
                     });
                   });
                 } catch (updateErr) {
-                  console.error("Error updating product quantities:", updateErr);
+                  console.error(
+                    "Error updating product quantities:",
+                    updateErr
+                  );
                   connection.rollback();
                   connection.release();
-                  return res.status(500).json({ error: "Error updating product quantities" });
+                  return res
+                    .status(500)
+                    .json({ error: "Error updating product quantities" });
                 }
-              } else if (returned === 'No') {
+              } else if (returned === "No") {
                 try {
                   await connection.query(
                     `
@@ -216,7 +234,9 @@ const updateOrder1 = async (req, res) => {
                       console.error("Error committing transaction:", commitErr);
                       connection.rollback();
                       connection.release();
-                      return res.status(500).json({ error: "Error committing transaction" });
+                      return res
+                        .status(500)
+                        .json({ error: "Error committing transaction" });
                     }
                     connection.release();
                     return res.status(200).json({
@@ -225,10 +245,15 @@ const updateOrder1 = async (req, res) => {
                     });
                   });
                 } catch (updateErr) {
-                  console.error("Error updating product quantities:", updateErr);
+                  console.error(
+                    "Error updating product quantities:",
+                    updateErr
+                  );
                   connection.rollback();
                   connection.release();
-                  return res.status(500).json({ error: "Error updating product quantities" });
+                  return res
+                    .status(500)
+                    .json({ error: "Error updating product quantities" });
                 }
               } else {
                 connection.commit((commitErr) => {
@@ -236,7 +261,9 @@ const updateOrder1 = async (req, res) => {
                     console.error("Error committing transaction:", commitErr);
                     connection.rollback();
                     connection.release();
-                    return res.status(500).json({ error: "Error committing transaction" });
+                    return res
+                      .status(500)
+                      .json({ error: "Error committing transaction" });
                   }
 
                   connection.release();
@@ -263,19 +290,16 @@ const updateOrder1 = async (req, res) => {
 };
 
 const updateOrder = async (req, res) => {
-  const {
-    creditor_name,
-    size,
-    returned,
-    amount_sold,
-    amount_condition,
-  } = req.body;
+  const { creditor_name, size, returned, amount_sold, amount_condition } =
+    req.body;
 
   const { product_id } = req.params;
 
   pool.getConnection((err, connection) => {
     if (err) {
-      return res.status(500).json({ error: "Error getting database connection" });
+      return res
+        .status(500)
+        .json({ error: "Error getting database connection" });
     }
 
     connection.beginTransaction(async (beginErr) => {
@@ -307,30 +331,36 @@ const updateOrder = async (req, res) => {
             if (insertErr) {
               connection.rollback(() => {
                 connection.release();
-                return res.status(500).json({ error: "Error updating order_items" });
+                return res
+                  .status(500)
+                  .json({ error: "Error updating order_items" });
               });
             }
 
-            if (returned === 'Yes') {
+            if (returned === "Yes") {
               connection.query(
                 `
                 UPDATE products
                 SET ${sizeColumn} = ${sizeColumn} + 1, stock = stock + 1
                 WHERE product_id = ?;
                 `,
-                [ product_id],
+                [product_id],
                 (updateErr) => {
                   if (updateErr) {
                     connection.rollback(() => {
                       connection.release();
-                      return res.status(500).json({ error: "Error updating product quantities" });
+                      return res
+                        .status(500)
+                        .json({ error: "Error updating product quantities" });
                     });
                   }
                   connection.commit((commitErr) => {
                     if (commitErr) {
                       connection.rollback(() => {
                         connection.release();
-                        return res.status(500).json({ error: "Error committing transaction" });
+                        return res
+                          .status(500)
+                          .json({ error: "Error committing transaction" });
                       });
                     }
                     connection.release();
@@ -346,7 +376,9 @@ const updateOrder = async (req, res) => {
                 if (commitErr) {
                   connection.rollback(() => {
                     connection.release();
-                    return res.status(500).json({ error: "Error committing transaction" });
+                    return res
+                      .status(500)
+                      .json({ error: "Error committing transaction" });
                   });
                 }
 
@@ -400,7 +432,10 @@ const viewOrder = async (req, res) => {
       oi.amount_condition,
       oi.paid_by,
       oi.created_at,
-      oi.update_at
+      oi.update_at,
+      oi.bank_payment, 
+      oi.city,
+      p.Final_cost
     FROM
       order_items oi
     JOIN
@@ -439,7 +474,10 @@ const viewOneOrder = async (req, res) => {
       oi.paid_by,
       oi.product_id,
       oi.created_at,
-      oi.update_at
+      oi.update_at,
+      oi.bank_payment, 
+      oi.city,
+      p.Final_cost
     FROM
       order_items oi
     JOIN
@@ -457,6 +495,31 @@ const viewOneOrder = async (req, res) => {
     const filteredResults = results.map((result) => filterNullValues(result));
 
     res.json(filteredResults);
+  });
+};
+
+const OrderImage = async (req, res) => {
+  const query = "SELECT product_image FROM products WHERE product_id = ?";
+
+  pool.query(query, [req.body.product_id], (err, results) => { 
+    if (err) {
+      console.error("Error executing the SQL query:", err);
+      return res
+        .status(500)
+        .json({ success: false, message: "Internal Server Error" });
+    }
+
+    const productData = results.map((result) => {
+      if (result.product_image) {
+        const parsedIds = JSON.parse(result.product_image);
+        const publicId = parsedIds[0]; 
+        const productId = req.body.product_id; 
+        return { publicId, productId };
+      }
+      return null;
+    });
+
+    res.json(productData.filter(Boolean));
   });
 };
 
@@ -492,45 +555,59 @@ const deleteOrder = (req, res) => {
         return res.status(500).json({ error: "Internal Server Error" });
       }
 
-      connection.query(deleteQuery, deleteValues, (deleteError, deleteResults) => {
-        if (deleteError) {
-          return connection.rollback(() => {
-            console.error("Error deleting order:", deleteError);
-            res.status(500).json({ error: "Internal Server Error" });
-          });
-        }
-
-        connection.query(updateQuery, updateValues, (updateError, updateResults) => {
-          if (updateError) {
+      connection.query(
+        deleteQuery,
+        deleteValues,
+        (deleteError, deleteResults) => {
+          if (deleteError) {
             return connection.rollback(() => {
-              console.error("Error updating products:", updateError);
+              console.error("Error deleting order:", deleteError);
               res.status(500).json({ error: "Internal Server Error" });
             });
           }
 
-          connection.commit((commitError) => {
-            if (commitError) {
-              return connection.rollback(() => {
-                console.error("Error committing transaction:", commitError);
-                res.status(500).json({ error: "Internal Server Error" });
+          connection.query(
+            updateQuery,
+            updateValues,
+            (updateError, updateResults) => {
+              if (updateError) {
+                return connection.rollback(() => {
+                  console.error("Error updating products:", updateError);
+                  res.status(500).json({ error: "Internal Server Error" });
+                });
+              }
+
+              connection.commit((commitError) => {
+                if (commitError) {
+                  return connection.rollback(() => {
+                    console.error("Error committing transaction:", commitError);
+                    res.status(500).json({ error: "Internal Server Error" });
+                  });
+                }
+
+                console.log("Order deleted and products updated successfully");
+                res.json({
+                  success: true,
+                  message: "Order deleted and products updated successfully",
+                  order_id: order_id,
+                });
+
+                connection.release();
               });
             }
-
-            console.log("Order deleted and products updated successfully");
-            res.json({
-              success: true,
-              message: "Order deleted and products updated successfully",
-              order_id: order_id,
-            });
-
-            connection.release();
-          });
-        });
-      });
+          );
+        }
+      );
     });
   });
 };
 
-module.exports = { order, updateOrder,updateOrder1, viewOrder, deleteOrder,viewOneOrder };
-
-
+module.exports = {
+  order,
+  updateOrder,
+  updateOrder1,
+  viewOrder,
+  deleteOrder,
+  viewOneOrder,
+  OrderImage
+};

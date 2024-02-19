@@ -2,7 +2,7 @@ const { pool } = require("../database");
 
 const TotalProducts = (req, res) => {
   const query = `
-     SELECT COUNT(product_id) AS totalProducts FROM products
+     SELECT SUM(Stock) AS totalProducts FROM products
   `;
 
   pool.query(query, (error, results) => {
@@ -24,7 +24,7 @@ const TotalProductsSold = (req, res) => {
   const { days } = req.query;
 
   const query = `
-    SELECT SUM(Total_items) AS Total_items 
+    SELECT count(Total_items) AS Total_items 
     FROM order_items 
     WHERE created_at > NOW() - INTERVAL ? DAY 
       AND returned = 'No';
@@ -90,12 +90,84 @@ const TotalAmountCollected = (req, res) => {
   });
 };
 
+// const TotalCostPrice = (req, res) => {
+//   const { days } = req.query;
+
+//   const query = `
+//     SELECT SUM(	Final_cost) AS amt 
+//     FROM products 
+//     WHERE created_at > NOW() - INTERVAL ? DAY 
+//   `;
+
+//   pool.query(query, [days], (error, results) => {
+//     if (error) {
+//       return res.status(500).json({ error: "Internal Server Error" });
+//     }
+
+//     console.log("Results:", results); // Log the results
+
+//     if (results.length === 1) {
+//       res.status(200).json(results);
+//     } else {
+//       return res.status(404).json({ error: "Product not found" });
+//     }
+//   });
+// };
+
 const TotalAmountInvested = (req, res) => {
   const { days } = req.query;
 
   const query = `
-    SELECT SUM(debitor_Amount + other_cost) AS amt
-    FROM debitors
+    SELECT SUM(	Final_cost) AS amt
+    FROM products
+    WHERE created_at > NOW() - INTERVAL ? DAY;
+  `;
+
+  pool.query(query,[days], (error, results) => {
+    if (error) {
+      console.error("Error executing query:", error);
+      return res.status(500).json({ error: "Internal Server Error" });
+    }
+
+    if (results.length === 1) {
+      console.log("Total Amount Invested:", results);
+      res.status(200).json(results);
+    } else {
+      return res.status(404).json({ error: "Product not found" });
+    }
+  });
+};
+
+const TotalExpense = (req, res) => {
+  const { days } = req.query;
+
+  const query = `
+    SELECT SUM(	amount) AS amt
+    FROM expense
+    WHERE created_at > NOW() - INTERVAL ? DAY;
+  `;
+
+  pool.query(query,[days], (error, results) => {
+    if (error) {
+      console.error("Error executing query:", error);
+      return res.status(500).json({ error: "Internal Server Error" });
+    }
+
+    if (results.length === 1) {
+      console.log("Total Amount Invested:", results);
+      res.status(200).json(results);
+    } else {
+      return res.status(404).json({ error: "Product not found" });
+    }
+  });
+};
+
+const TotalBankSettelment = (req, res) => {
+  const { days } = req.query;
+
+  const query = `
+    SELECT SUM(bank_payment) AS amt
+    FROM order_items
     WHERE created_at > NOW() - INTERVAL ? DAY;
   `;
 
@@ -147,8 +219,8 @@ const profit = (req, res) => {
   `;
 
   const totalAmountInvestedQuery = `
-    SELECT SUM(debitor_Amount + other_cost) AS totalAmountInvested
-    FROM debitors
+    SELECT sum(bank_payment) AS totalAmountInvested
+    FROM order_items
     WHERE created_at > NOW() - INTERVAL ? DAY ;
   `;
 
@@ -182,6 +254,58 @@ const profit = (req, res) => {
   });
 };
 
+const size = (req, res) => {
+  const { sizes } = req.query;
+  console.log("Received size:", sizes);
+
+  const query = `
+    SELECT SUM(${sizes}) AS size
+    FROM products
+  `;
+
+  pool.query(query, (error, results) => {
+    if (error) {
+      console.error("Error executing query:", error);
+      return res.status(500).json({ error: "Internal Server Error" });
+    }
+
+    console.log("Results:", results); // Log the results
+
+    if (results.length > 0) {
+      res.status(200).json(results);
+    } else {
+      return res.status(404).json({ error: "Products not found" });
+    }
+  });
+};
+
+
+const productType = (req, res) => {
+  const { productType } = req.query;
+  console.log("Received size:", sizes);
+
+  const query = `
+    SELECT SUM(${productType}) AS productType
+    FROM products
+    where product_type = ?
+  `;
+
+  pool.query(query, (error, results) => {
+    if (error) {
+      console.error("Error executing query:", error);
+      return res.status(500).json({ error: "Internal Server Error" });
+    }
+
+    console.log("Results:", results); // Log the results
+
+    if (results.length > 0) {
+      res.status(200).json(results);
+    } else {
+      return res.status(404).json({ error: "Products not found" });
+    }
+  });
+};
+
 
 module.exports = {
   TotalProducts,
@@ -190,5 +314,9 @@ module.exports = {
   TotalAmountCollected,
   TotalReturned,
   TotalAmountInvested,
-  profit
+  profit,
+
+  size,
+  TotalBankSettelment,
+  TotalExpense
 };

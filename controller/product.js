@@ -256,7 +256,7 @@ const oneProduct = async (req, res) => {
 
       // Construct Cloudinary URLs for images using the public IDs
       const cloudinaryUrls = productDetails.product_image.map((publicId) => {
-        return `https://res.cloudinary.com/dirtvhx2i/image/upload/${publicId}`;
+        return `https://res.cloudinary.com/dgcxd0kkk/image/upload/${publicId}`;
       });
 
       // Send product details with image URLs to the frontend
@@ -386,6 +386,26 @@ const productId = async (req, res) => {
   }
 };
 
+const productType = async (req, res) => {
+  try {
+    // Use the promisified pool.query function
+    const result = await poolQuery("SELECT DISTINCT product_type FROM products");
+
+    // Check if the result is an array and has at least one row
+    if (Array.isArray(result) && result.length > 0) {
+      const productTypes = result.map((row) => row.product_type);
+      res.json(productTypes);
+    } else {
+      console.error("No rows found");
+      res.status(404).json({ error: "No product types found" });
+    }
+  } catch (error) {
+    console.error("Error fetching productType:", error.message);
+    console.error("Stack trace:", error.stack);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
 const deleteProduct = (req, res) => {
   const query = "DELETE FROM products WHERE product_id = ?";
   const value = [req.body.productId];
@@ -435,4 +455,5 @@ module.exports = {
   updateProduct,
   productId,
   sendImage,
+  productType
 };

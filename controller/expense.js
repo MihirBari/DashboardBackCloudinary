@@ -85,6 +85,41 @@ const addImage = async (req, res) => {
   }
 };
 
+const addExpense = (req, res) => {
+  const addDealer = `INSERT INTO expense
+    (name, date, amount, paid_status, paid_by, remarks, clearance_status, payment_mode, reciept, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+  `;
+
+  let recieptValue = req.body.reciept || null; // Set reciept to null if it's not provided
+
+  const values = [
+    req.body.name,
+    req.body.date,
+    req.body.amount,
+    req.body.paid_status,
+    req.body.paid_by,
+    req.body.remarks,
+    req.body.clearance_status,
+    req.body.payment_mode,
+    JSON.stringify(recieptValue),
+  ];
+
+  pool.query(addDealer, values, (error, results) => {
+    if (error) {
+      console.error('Error executing query:', error);
+      return res.status(500).json({ error: 'Internal Server Error' });
+    }
+
+    console.log('Expense added successfully:', results);
+
+    // Log the uploaded image public IDs
+    console.log('Uploaded Image Public IDs:', req.body.reciept);
+
+    res.json(results);
+  });
+};
+
 const showExpense = (req,res) => {
 
     const dealer = `SELECT 
@@ -129,7 +164,7 @@ const showOneExpense = async (req, res) => {
 
           // Construct Cloudinary URLs for images using the public IDs
           const cloudinaryUrls = recieptArray.map((publicId) => {
-            return `https://res.cloudinary.com/dirtvhx2i/image/upload/${publicId}`;
+            return `https://res.cloudinary.com/dgcxd0kkk/image/upload/${publicId}`;
           });
 
           // Send product details with image URLs to the frontend
@@ -153,41 +188,6 @@ const showOneExpense = async (req, res) => {
     console.error("Error executing query:", error);
     return res.status(500).json({ error: "Internal Server Error" });
   }
-};
-
-const addExpense = (req, res) => {
-  const addDealer = `INSERT INTO expense
-    (name, date, amount, paid_status, paid_by, remarks, clearance_status, payment_mode, reciept, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-  `;
-
-  let recieptValue = req.body.reciept || null; // Set reciept to null if it's not provided
-
-  const values = [
-    req.body.name,
-    req.body.date,
-    req.body.amount,
-    req.body.paid_status,
-    req.body.paid_by,
-    req.body.remarks,
-    req.body.clearance_status,
-    req.body.payment_mode,
-    JSON.stringify(recieptValue),
-  ];
-
-  pool.query(addDealer, values, (error, results) => {
-    if (error) {
-      console.error('Error executing query:', error);
-      return res.status(500).json({ error: 'Internal Server Error' });
-    }
-
-    console.log('Expense added successfully:', results);
-
-    // Log the uploaded image public IDs
-    console.log('Uploaded Image Public IDs:', req.body.reciept);
-
-    res.json(results);
-  });
 };
 
 const editExpense = (req, res) => {
@@ -253,4 +253,32 @@ const deleteExpense = (req, res) => {
   });
 };
  
-module.exports = {showExpense,showOneExpense,addExpense,editExpense,deleteExpense,addImage};
+const recieptImage = async (req, res) => {
+  
+const id = req.body.id
+ console.log(id)
+  const query = "SELECT	reciept FROM 	expense WHERE id = ?";
+
+  pool.query(query, [id], (err, results) => { 
+    if (err) {
+      console.error("Error executing the SQL query:", err);
+      return res
+        .status(500)
+        .json({ success: false, message: "Internal Server Error" });
+    }
+
+    const productData = results.map((result) => {
+      if (result.reciept) {
+        const parsedIds = JSON.parse(result.reciept);
+        const publicId = parsedIds[0]; 
+        const productId = req.body.id; 
+        return { publicId, productId };
+      }
+      return null;
+    });
+
+    res.json(productData.filter(Boolean));
+  });
+};
+
+module.exports = {showExpense,showOneExpense,addExpense,editExpense,deleteExpense,addImage,recieptImage};

@@ -17,7 +17,6 @@ cloudinary.config({
 cloudinaryUrl = 'cloudinary://239697659531164:iV6w3B6G1cbFzAh-lSWWsxSbZHI@dgcxd0kkk';
 cloudinary.config(cloudinaryUrl);
 
-
 const poolQuery = (query, values) => {
   return new Promise((resolve, reject) => {
     pool.query(query, values, (error, results) => {
@@ -128,7 +127,7 @@ const showOneDealer = async(req, res) => {
 
           // Construct Cloudinary URLs for images using the public IDs
           const cloudinaryUrls = recieptArray.map((publicId) => {
-            return `https://res.cloudinary.com/dirtvhx2i/image/upload/${publicId}`;
+            return `https://res.cloudinary.com/dgcxd0kkk/image/upload/${publicId}`;
           });
 
           // Send product details with image URLs to the frontend
@@ -242,7 +241,6 @@ const editDealer = (req, res) => {
   });
 };
 
-
 const deleteSeller = (req, res) => {
   const query = 'DELETE FROM debitors WHERE id = ?';
   const debitorName = req.body.id;
@@ -262,4 +260,33 @@ const deleteSeller = (req, res) => {
   });
 };
 
-module.exports = {showDealer,addDealer,deleteSeller,editDealer,showOneDealer,addImage};
+const recieptImage = async (req, res) => {
+  
+  const id = req.body.id
+   console.log(id)
+    const query = "SELECT	reciept FROM 	debitors WHERE id = ?";
+  
+    pool.query(query, [id], (err, results) => { 
+      if (err) {
+        console.error("Error executing the SQL query:", err);
+        return res
+          .status(500)
+          .json({ success: false, message: "Internal Server Error" });
+      }
+  
+      const productData = results.map((result) => {
+        if (result.reciept) {
+          const parsedIds = JSON.parse(result.reciept);
+          const publicId = parsedIds[0]; 
+          const productId = req.body.id; 
+          return { publicId, productId };
+        }
+        return null;
+      });
+  
+      res.json(productData.filter(Boolean));
+    });
+  };
+  
+
+module.exports = {showDealer,addDealer,deleteSeller,editDealer,showOneDealer,addImage,recieptImage};

@@ -28,6 +28,8 @@
     "mysql2": "^3.6.5",
     "nodemailer": "^6.9.3",
     "nodemon": "^2.0.22",
+    "pdf2image": "^1.2.3",
+    "pdf2img": "^0.5.0",
     "sharp": "^0.33.1"
   },
   "description": ""

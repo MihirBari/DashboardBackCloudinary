@@ -282,15 +282,15 @@ const size = (req, res) => {
 
 const productType = (req, res) => {
   const { productType } = req.query;
-  console.log("Received size:", sizes);
+  console.log("Received size:", productType);
 
   const query = `
-    SELECT SUM(${productType}) AS productType
+    SELECT COUNT(product_type) AS productType
     FROM products
     where product_type = ?
   `;
 
-  pool.query(query, (error, results) => {
+  pool.query(query,[productType], (error, results) => {
     if (error) {
       console.error("Error executing query:", error);
       return res.status(500).json({ error: "Internal Server Error" });
@@ -315,7 +315,7 @@ module.exports = {
   TotalReturned,
   TotalAmountInvested,
   profit,
-
+  productType,
   size,
   TotalBankSettelment,
   TotalExpense

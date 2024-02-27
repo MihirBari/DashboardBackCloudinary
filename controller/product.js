@@ -14,9 +14,9 @@ cloudinary.config({
   api_secret: "iV6w3B6G1cbFzAh-lSWWsxSbZHI",
 });
 
-cloudinaryUrl = 'cloudinary://239697659531164:iV6w3B6G1cbFzAh-lSWWsxSbZHI@dgcxd0kkk';
+cloudinaryUrl =
+  "cloudinary://239697659531164:iV6w3B6G1cbFzAh-lSWWsxSbZHI@dgcxd0kkk";
 cloudinary.config(cloudinaryUrl);
-
 
 const poolQuery = (query, values) => {
   return new Promise((resolve, reject) => {
@@ -93,8 +93,7 @@ const addProduct = async (req, res) => {
   const userId = req.body.data[0].userId;
 
   try {
-    await pool.query('START TRANSACTION');
-
+    await pool.query("START TRANSACTION");
 
     const prod = `
       INSERT INTO products
@@ -161,57 +160,182 @@ const addProduct = async (req, res) => {
       console.log("prod query: ", prod, values);
 
       await pool.query(prod, values);
-  
     }
 
-    await pool.query('COMMIT');
+    await pool.query("COMMIT");
     res.json({ message: "Products added successfully" });
   } catch (error) {
-    await pool.query('ROLLBACK');
+    await pool.query("ROLLBACK");
     console.error("Error adding products:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
-const inventory = (req, res) => {
-  const inventory = `
-  SELECT
-    p.product_id,
-    p.product_name,
-    p.Description,
-    p.Stock,
-    p.s,
-    p.m,
-    p.l,
-    p.xl,
-    p.xxl,
-    p.xxxl,
-    p.xxxxl,
-    p.xxxxxl,
-    p.xxxxxxl,
-    p.Stock,
-    p.product_price,
-    p.Cost_price,
-    p.product_type,
-    p.other_cost,
-    p.Final_cost,
-    p.created_at,
-    p.updated_at,
-    p.status,
-    p.product_image
-  FROM
-    products p
+const inventory = async (req, res) => {
+  // Extract filter parameters from the request query
+  let {
+    productName,
+    productType,
+    costPriceMin,
+    costPriceMax,
+    dateFilterType,
+    selectedDate,
+    startDate,
+    endDate,
+  } = req.query;
 
-`;
+  // console.log("productName:", productName);
+  // console.log("productType:", productType);
+  // console.log("costPriceMin:", costPriceMin);
+  // console.log("costPriceMax:", costPriceMax);
 
-  pool.query(inventory, (error, results) => {
-    if (error) {
-      console.error("Error executing query:", error);
+  pool.getConnection((err, connection) => {
+    if (err) {
+      console.error("Error getting connection:", err);
       return res.status(500).json({ error: "Internal Server Error" });
     }
-    res.json(results);
+
+    connection.beginTransaction((transactionErr) => {
+      if (transactionErr) {
+        console.error("Error starting transaction:", transactionErr);
+        connection.release();
+        return res.status(500).json({ error: "Internal Server Error" });
+      }
+
+      let inventoryQuery = `
+      SELECT
+      p.product_id,
+      p.product_name,
+      p.Description,
+      p.s,
+      p.m,
+      p.l,
+      p.xl,
+      p.xxl,
+      p.xxxl,
+      p.xxxxl,
+      p.xxxxxl,
+      p.xxxxxxl,
+      p.Stock,
+      p.product_price,
+      p.Cost_price,
+      p.product_type,
+      p.other_cost,
+      p.Final_cost,
+      p.created_at,
+      p.updated_at,
+      p.status
+    FROM
+      products p
+      WHERE p.status = 'Active'AND p.Stock > 0 
+      `;
+
+      let inventoryQuery2 = `
+        SELECT
+          COUNT(p.product_id) AS Total_Products,
+          SUM(p.Stock) AS Total_Stock,
+          SUM(p.Final_cost) AS Total_Final_Cost,
+          count(p.product_type) as Product_Type
+        FROM
+          products p
+          WHERE p.status = 'Active'AND p.Stock > 0 
+      `;
+
+      const queryParams = [];
+
+      // Construct the WHERE clause based on the provided filters
+      // (Omitted for brevity)
+      if (productName) {
+        queryParams.push(`p.product_name LIKE '%${productName}%'`);
+      }
+      if (costPriceMin) {
+        queryParams.push(`p.Final_cost >= ${costPriceMin}`);
+      }
+      if (costPriceMax) {
+        queryParams.push(`p.Final_cost <= ${costPriceMax}`);
+      }
+      if (dateFilterType && selectedDate) {
+        if (dateFilterType === "equal") {
+          queryParams.push(`DATE(p.created_at) = '${selectedDate}'`);
+        } else if (dateFilterType === "before") {
+          queryParams.push(`DATE(p.created_at) < '${selectedDate}'`);
+        } else if (dateFilterType === "after") {
+          queryParams.push(`DATE(p.created_at) > '${selectedDate}'`);
+        } else if (dateFilterType === "between" && startDate && endDate) {
+          queryParams.push(
+            `DATE(p.created_at) BETWEEN '${startDate}' AND '${endDate}'`
+          );
+        }
+      }
+    
+      // Handle multiple selections for productType
+      if (productType && Array.isArray(productType)) {
+        const productTypeConditions = productType.map(type => `p.product_type LIKE '%${type}%'`);
+        if (productTypeConditions.length > 0) {
+          queryParams.push(`(${productTypeConditions.join(" OR ")})`);
+        }
+      } else if (productType) {
+        queryParams.push(`p.product_type LIKE '%${productType}%'`);
+      }
+    
+      // Handle multiple selections for status
+      // if (status && Array.isArray(status)) {
+      //   const statusConditions = status.map(stat => `p.status LIKE '%${stat}%'`);
+      //   if (statusConditions.length > 0) {
+      //     queryParams.push(`(${statusConditions.join(" OR ")})`);
+      //   }
+      // } else if (status) {
+      //   queryParams.push(`p.status LIKE '%${status}%'`);
+      // }
+
+      if (queryParams.length > 0) {
+        inventoryQuery += " AND " + queryParams.join(" AND ") 
+        
+        ;
+      }
+
+      if (queryParams.length > 0) {
+        inventoryQuery2 += " AND  " + queryParams.join(" AND ");
+      }
+
+      connection.query(inventoryQuery, (error, results1) => {
+        if (error) {
+          console.error("Error executing query 1:", error);
+          return connection.rollback(() => {
+            connection.release();
+            res.status(500).json({ error: "Internal Server Error" });
+          });
+        }
+
+        connection.query(inventoryQuery2, (error, results2) => {
+          if (error) {
+            console.error("Error executing query 2:", error);
+            return connection.rollback(() => {
+              connection.release();
+              res.status(500).json({ error: "Internal Server Error" });
+            });
+          }
+
+          connection.commit((commitErr) => {
+            if (commitErr) {
+              console.error("Error committing transaction:", commitErr);
+              return connection.rollback(() => {
+                connection.release();
+                res.status(500).json({ error: "Internal Server Error" });
+              });
+            }
+
+            connection.release();
+            // console.log(results1)
+             console.log(results2)
+            res.json({ products: results1, total: results2 });
+          });
+        });
+      });
+    });
   });
 };
+
 
 const oneProduct = async (req, res) => {
   const inventory = `
@@ -274,7 +398,6 @@ const oneProduct = async (req, res) => {
 };
 
 const updateProduct = async (req, res) => {
-
   if (!req.body.data || !Array.isArray(req.body.data)) {
     return res.status(400).json({ error: "Invalid data format" });
   }
@@ -282,7 +405,7 @@ const updateProduct = async (req, res) => {
   const userId = req.body.userId;
 
   try {
-    await pool.query('START TRANSACTION');
+    await pool.query("START TRANSACTION");
 
     const prod = `
       UPDATE products
@@ -349,18 +472,15 @@ const updateProduct = async (req, res) => {
         req.params.product_id,
       ];
 
-
       console.log("prod query: ", prod, values);
 
-
       await pool.query(prod, values);
-
     }
 
-    await pool.query('COMMIT');
+    await pool.query("COMMIT");
     res.json({ message: "Products added successfully" });
   } catch (error) {
-    await pool.query('ROLLBACK');
+    await pool.query("ROLLBACK");
     console.error("Error adding products:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
@@ -389,7 +509,9 @@ const productId = async (req, res) => {
 const productType = async (req, res) => {
   try {
     // Use the promisified pool.query function
-    const result = await poolQuery("SELECT DISTINCT product_type FROM products");
+    const result = await poolQuery(
+      "SELECT DISTINCT product_type FROM products"
+    );
 
     // Check if the result is an array and has at least one row
     if (Array.isArray(result) && result.length > 0) {
@@ -422,7 +544,66 @@ const deleteProduct = (req, res) => {
 };
 
 const sendImage = async (req, res) => {
-  const query = "SELECT product_id, product_image FROM products";
+  let {
+    productName,
+    productType,
+    status,
+    costPriceMin,
+    costPriceMax,
+    dateFilterType,
+    selectedDate,
+    startDate,
+    endDate,
+  } = req.query;
+
+  console.log("productName:", productName);
+  console.log("productType:", productType);
+  console.log("status:", status);
+  console.log("costPriceMin:", costPriceMin);
+  console.log("costPriceMax:", costPriceMax);
+  console.log("dateFilterType:", dateFilterType);
+  console.log("selectedDate:", selectedDate);
+  console.log("startDate:", startDate);
+  console.log("endDate:", endDate);
+
+  const queryParams = []; // Initialize queryParams array here
+
+  let query = `SELECT product_id, product_image, product_type, status, Final_cost
+  FROM products`;
+
+  // Construct the WHERE clause based on the provided filters
+
+  if (productType) {
+    queryParams.push(`product_type LIKE '%${productType}%'`);
+  }
+  if (status) {
+    queryParams.push(`status = '${status}'`);
+  }
+  if (costPriceMin) {
+    queryParams.push(`Final_cost >= ${costPriceMin}`);
+  }
+  if (costPriceMax) {
+    queryParams.push(`Final_cost <= ${costPriceMax}`);
+  }
+  if (dateFilterType && selectedDate) {
+    if (dateFilterType === "equal") {
+      queryParams.push(`DATE(created_at) = '${selectedDate}'`);
+    } else if (dateFilterType === "before") {
+      queryParams.push(`DATE(created_at) < '${selectedDate}'`);
+    } else if (dateFilterType === "after") {
+      queryParams.push(`DATE(created_at) > '${selectedDate}'`);
+    } else if (dateFilterType === "between" && startDate && endDate) {
+      queryParams.push(
+        `DATE(created_at) BETWEEN '${startDate}' AND '${endDate}'`
+      );
+    }
+  }
+
+  if (queryParams.length > 0) {
+    query += " WHERE " + queryParams.join(" AND ");
+  }
+
+  query += " ORDER BY created_at DESC"; // Add ORDER BY clause here
 
   pool.query(query, async (err, results) => {
     if (err) {
@@ -446,6 +627,146 @@ const sendImage = async (req, res) => {
   });
 };
 
+const wasteProduct = async (req, res) => {
+  // Extract filter parameters from the request query
+  let {
+    productName,
+    productType,
+    costPriceMin,
+    costPriceMax,
+    dateFilterType,
+    status,
+    selectedDate,
+    startDate,
+    endDate,
+  } = req.query;
+
+  console.log("productName:", productName);
+  console.log("productType:", productType);
+  console.log("costPriceMin:", costPriceMin);
+  console.log("costPriceMax:", costPriceMax);
+  console.log("status:", status)
+
+  pool.getConnection((err, connection) => {
+    if (err) {
+      console.error("Error getting connection:", err);
+      return res.status(500).json({ error: "Internal Server Error" });
+    }
+
+    connection.beginTransaction((transactionErr) => {
+      if (transactionErr) {
+        console.error("Error starting transaction:", transactionErr);
+        connection.release();
+        return res.status(500).json({ error: "Internal Server Error" });
+      }
+
+      let inventoryQuery = `
+      SELECT
+      p.product_id,
+      p.product_name,
+      p.Description,
+      p.s,
+      p.m,
+      p.l,
+      p.xl,
+      p.xxl,
+      p.xxxl,
+      p.xxxxl,
+      p.xxxxxl,
+      p.xxxxxxl,
+      p.Stock,
+      p.product_price,
+      p.Cost_price,
+      p.product_type,
+      p.other_cost,
+      p.Final_cost,
+      p.created_at,
+      p.updated_at,
+      p.status
+    FROM
+      products p
+      WHERE (p.status != 'Active' AND p.status != 'InActive') OR p.Stock = 0
+      `;
+
+      const queryParams = [];
+
+      // Construct the WHERE clause based on the provided filters
+      // (Omitted for brevity)
+      if (productName) {
+        queryParams.push(`p.product_name LIKE '%${productName}%'`);
+      }
+      if (costPriceMin) {
+        queryParams.push(`p.Final_cost >= ${costPriceMin}`);
+      }
+      if (costPriceMax) {
+        queryParams.push(`p.Final_cost <= ${costPriceMax}`);
+      }
+      if (dateFilterType && selectedDate) {
+        if (dateFilterType === "equal") {
+          queryParams.push(`DATE(p.created_at) = '${selectedDate}'`);
+        } else if (dateFilterType === "before") {
+          queryParams.push(`DATE(p.created_at) < '${selectedDate}'`);
+        } else if (dateFilterType === "after") {
+          queryParams.push(`DATE(p.created_at) > '${selectedDate}'`);
+        } else if (dateFilterType === "between" && startDate && endDate) {
+          queryParams.push(
+            `DATE(p.created_at) BETWEEN '${startDate}' AND '${endDate}'`
+          );
+        }
+      }
+    
+      // Handle multiple selections for productType
+      if (productType && Array.isArray(productType)) {
+        const productTypeConditions = productType.map(type => `p.product_type LIKE '%${type}%'`);
+        if (productTypeConditions.length > 0) {
+          queryParams.push(`(${productTypeConditions.join(" OR ")})`);
+        }
+      } else if (productType) {
+        queryParams.push(`p.product_type LIKE '%${productType}%'`);
+      }
+    
+      // Handle multiple selections for status
+      if (status && Array.isArray(status)) {
+        const statusConditions = status.map(stat => `p.status LIKE '%${stat}%'`);
+        if (statusConditions.length > 0) {
+          queryParams.push(`(${statusConditions.join(" OR ")})`);
+        }
+      } else if (status) {
+        queryParams.push(`p.status LIKE '%${status}%'`);
+      }
+
+      if (queryParams.length > 0) {
+        inventoryQuery += " AND " + queryParams.join(" AND ") + ";";
+      }
+
+      connection.query(inventoryQuery, (error, results1) => {
+        if (error) {
+          console.error("Error executing query:", error);
+          return connection.rollback(() => {
+            connection.release();
+            res.status(500).json({ error: "Internal Server Error" });
+          });
+        }
+
+        connection.commit((commitErr) => {
+          if (commitErr) {
+            console.error("Error committing transaction:", commitErr);
+            return connection.rollback(() => {
+              connection.release();
+              res.status(500).json({ error: "Internal Server Error" });
+            });
+          }
+
+          connection.release();
+          console.log(results1);
+          res.json({ products: results1 });
+        });
+      });
+    });
+  });
+};
+
+
 module.exports = {
   inventory,
   addProduct,
@@ -455,5 +776,6 @@ module.exports = {
   updateProduct,
   productId,
   sendImage,
-  productType
+  productType,
+  wasteProduct
 };

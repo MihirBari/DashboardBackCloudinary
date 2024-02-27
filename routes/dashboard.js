@@ -1,5 +1,5 @@
 const express = require("express");
-const { TotalProducts,TotalProductsSold,TotalProductsLeft,TotalAmountCollected , TotalReturned, TotalAmountInvested, profit, size, TotalBankSettelment, TotalExpense} = require("../controller/dashboard");
+const { TotalProducts,TotalProductsSold,TotalProductsLeft,TotalAmountCollected , TotalReturned, TotalAmountInvested, profit, size, TotalBankSettelment, TotalExpense, productType} = require("../controller/dashboard");
 
 const router = express.Router();
 
@@ -13,5 +13,6 @@ router.get("/profit", profit);
 router.get("/size", size);
 router.get("/TotalBankSettelment", TotalBankSettelment);
 router.get("/TotalExpense", TotalExpense);
+router.get("/productType", productType);
 
 module.exports = router;

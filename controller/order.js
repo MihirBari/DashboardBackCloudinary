@@ -23,6 +23,7 @@ const order = async (req, res) => {
     paid_by,
     bank_payment,
     city,
+    delivery_status,
   } = req.body;
 
   console.log("Order received on the server:", req.body);
@@ -47,8 +48,8 @@ const order = async (req, res) => {
         await connection.query(
           `
           INSERT INTO order_items (
-            creditor_name, product_id, ${sizeColumn},Total_items, returned, amount_sold, amount_condition,bank_payment, city, paid_by,created_at
-          ) VALUES (?, ?, ?, ?,?, ?,?,?,?, ?,Now());
+            creditor_name, product_id, ${sizeColumn},Total_items, returned, amount_sold, amount_condition,bank_payment, city, paid_by,delivery_status,created_at
+          ) VALUES (?, ?, ?, ?,?, ?,?,?,?,?, ?,Now());
           `,
           [
             creditor_name,
@@ -61,6 +62,7 @@ const order = async (req, res) => {
             bank_payment,
             city,
             paid_by,
+            delivery_status,
           ],
           (insertErr) => {
             if (insertErr) {
@@ -133,6 +135,7 @@ const updateOrder1 = async (req, res) => {
       bank_payment,
       city,
       paid_by,
+      delivery_status,
       product_id,
     } = req.body;
 
@@ -169,7 +172,7 @@ const updateOrder1 = async (req, res) => {
             `
     UPDATE order_items 
     SET creditor_name = ?, ${sizeColumn} = ?,
-    returned = ?, amount_sold = ?, amount_condition = ?, bank_payment = ?, city = ?, paid_by = ?, update_at = NOW()
+    returned = ?, amount_sold = ?, amount_condition = ?, bank_payment = ?, city = ?, paid_by = ?,delivery_status = ?, update_at = NOW()
     WHERE order_id = ?;
     `,
             [
@@ -181,6 +184,7 @@ const updateOrder1 = async (req, res) => {
               bank_payment,
               city,
               paid_by,
+              delivery_status,
               order_id,
             ],
             async (insertErr) => {
@@ -432,6 +436,7 @@ const viewOrder = async (req, res) => {
     returned,
     city,
     size,
+    deliveryStatus,
     costPriceMin,
     costPriceMax,
     dateFilterType,
@@ -440,7 +445,7 @@ const viewOrder = async (req, res) => {
     endDate,
   } = req.query;
 
-  console.log(soldBy);
+  console.log(deliveryStatus);
 
   pool.getConnection((err, connection) => {
     if (err) {
@@ -480,6 +485,7 @@ const viewOrder = async (req, res) => {
       oi.update_at,
       oi.bank_payment, 
       oi.city,
+      oi.delivery_status,
       p.Final_cost
     FROM
       order_items oi
@@ -489,25 +495,25 @@ const viewOrder = async (req, res) => {
 
       let query1 = `
       SELECT 
-  COUNT(oi.order_id) AS order_count,
-  COUNT(oi.Total_items) AS total_items,
-  SUM(oi.amount_sold) AS total_amount_sold,
-  COUNT(oi.amount_condition) AS amount_condition_count,
-  COUNT(oi.paid_by) AS paid_by_count,
-  COUNT(oi.bank_payment) AS bank_payment_count,
-  COUNT(oi.city) AS city_count,
-  SUM(p.Final_cost - oi.amount_sold) AS total_profit
-FROM
-  order_items oi
-JOIN
-  products p ON p.product_id = oi.product_id
+       COUNT(oi.order_id) AS order_count,
+       COUNT(DISTINCT oi.Total_items) AS total_items,
+       SUM(oi.amount_sold) AS total_amount_sold,
+       COUNT(DISTINCT oi.amount_condition) AS amount_condition_count,
+       COUNT(DISTINCT oi.paid_by) AS paid_by_count,
+       COUNT(DISTINCT oi.bank_payment) AS bank_payment_count,
+       COUNT(DISTINCT oi.city) AS city_count,
+       SUM(oi.bank_payment - p.Final_cost) AS total_profit
+       FROM
+       order_items oi
+       JOIN
+       products p ON p.product_id = oi.product_id
       `; // Your second query
 
       let inventoryQuery = [];
 
       // Add filters to the query based on the provided values
       if (productName) {
-        inventoryQuery.push += `p.product_name = '${productName}' AND `;
+        inventoryQuery.push(`p.product_name = '${productName}' AND `);
       }
 
       if (orderId && Array.isArray(orderId)) {
@@ -532,12 +538,23 @@ JOIN
         inventoryQuery.push(`	oi.paid_by LIKE '%${soldBy}%'`);
       }
 
+      if (deliveryStatus && Array.isArray(deliveryStatus)) {
+        const deliveryStatusConditions = deliveryStatus.map(
+          (type) => `oi.delivery_status LIKE '%${type}%'`
+        );
+        if (deliveryStatusConditions.length > 0) {
+          inventoryQuery.push(`(${deliveryStatusConditions.join(" OR ")})`);
+        }
+      } else if (deliveryStatus) {
+        inventoryQuery.push(`	oi.delivery_status LIKE '%${deliveryStatus}%'`);
+      }
+
       if (amountCredited) {
-        inventoryQuery.push += `oi.amount_condition = '${amountCredited}' AND `;
+        inventoryQuery.push(`oi.amount_condition = '${amountCredited}' AND `);
       }
 
       if (returned) {
-        inventoryQuery.push += `oi.returned = '${returned}' AND `;
+        inventoryQuery.push(`oi.returned = '${returned}' AND `);
       }
 
       if (city && Array.isArray(city)) {
@@ -549,12 +566,8 @@ JOIN
         inventoryQuery.push(`	oi.city LIKE '%${city}%'`);
       }
 
-      if (size) {
-        inventoryQuery.push += `oi.Total_items = '${size}' AND `;
-      }
-
       if (size && Array.isArray(size)) {
-        const sizeConditions = soldBy.map(
+        const sizeConditions = size.map(
           (type) => `oi.Total_items LIKE '%${type}%'`
         );
         if (sizeConditions.length > 0) {
@@ -565,21 +578,24 @@ JOIN
       }
 
       if (costPriceMin && costPriceMax) {
-        inventoryQuery.push += `p.Final_cost BETWEEN ${costPriceMin} AND ${costPriceMax} AND `;
+        inventoryQuery.push(
+          `p.Final_cost BETWEEN ${costPriceMin} AND ${costPriceMax} AND `
+        );
       }
 
       if (dateFilterType) {
         if (dateFilterType === "equal") {
-          inventoryQuery.push += `DATE(oi.created_at) = '${selectedDate}' AND `;
+          inventoryQuery.push(`DATE(oi.created_at) = '${selectedDate}' AND `);
         } else if (dateFilterType === "before") {
-          inventoryQuery.push += `DATE(oi.created_at) < '${selectedDate}' AND `;
+          inventoryQuery.push(`DATE(oi.created_at) < '${selectedDate}' AND `);
         } else if (dateFilterType === "after") {
-          inventoryQuery.push += `DATE(oi.created_at) > '${selectedDate}' AND `;
+          inventoryQuery.push(`DATE(oi.created_at) > '${selectedDate}' AND `);
         } else if (dateFilterType === "between" && startDate && endDate) {
-          inventoryQuery.push += `DATE(oi.created_at) BETWEEN '${startDate}' AND '${endDate}' AND `;
+          inventoryQuery.push(
+            `DATE(oi.created_at) BETWEEN '${startDate}' AND '${endDate}' AND `
+          );
         }
       }
-
 
       const whereClause = inventoryQuery.join(" AND ");
 
@@ -619,7 +635,8 @@ JOIN
             }
 
             connection.release();
-            console.log(results1);
+            //console.log(results);
+            //console.log(results1);
             res.json({ products: results, total: results1 });
           });
         });
@@ -651,6 +668,7 @@ const viewOneOrder = async (req, res) => {
       oi.update_at,
       oi.bank_payment, 
       oi.city,
+      oi.delivery_status,
       p.Final_cost
     FROM
       order_items oi

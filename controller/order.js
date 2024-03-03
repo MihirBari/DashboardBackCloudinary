@@ -445,7 +445,7 @@ const viewOrder = async (req, res) => {
     endDate,
   } = req.query;
 
-  console.log(deliveryStatus);
+  console.log("deliveryStatus :",deliveryStatus);
 
   pool.getConnection((err, connection) => {
     if (err) {

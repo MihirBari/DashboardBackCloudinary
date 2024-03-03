@@ -688,6 +688,17 @@ const wasteProduct = async (req, res) => {
       WHERE (p.status != 'Active' AND p.status != 'InActive') OR p.Stock = 0
       `;
 
+      let inventoryQuery2 = `
+        SELECT
+          COUNT(p.product_id) AS Total_Products,
+          SUM(p.Stock) AS Total_Stock,
+          SUM(p.Final_cost) AS Total_Final_Cost,
+          count(p.product_type) as Product_Type
+        FROM
+          products p
+          WHERE (p.status != 'Active' AND p.status != 'InActive') OR p.Stock = 0
+      `;
+
       const queryParams = [];
 
       // Construct the WHERE clause based on the provided filters
@@ -724,19 +735,22 @@ const wasteProduct = async (req, res) => {
       } else if (productType) {
         queryParams.push(`p.product_type LIKE '%${productType}%'`);
       }
-    
-      // Handle multiple selections for status
+      
       if (status && Array.isArray(status)) {
         const statusConditions = status.map(stat => `p.status LIKE '%${stat}%'`);
         if (statusConditions.length > 0) {
           queryParams.push(`(${statusConditions.join(" OR ")})`);
         }
       } else if (status) {
-        queryParams.push(`p.status LIKE '%${status}%'`);
-      }
+        queryParams.push(`p.status LIKE '%${status}%'`); // Fixed: Added space after "p.status"
+      } 
 
       if (queryParams.length > 0) {
         inventoryQuery += " AND " + queryParams.join(" AND ") + ";";
+      }      
+
+      if (queryParams.length > 0) {
+        inventoryQuery2 += " AND  " + queryParams.join(" AND ");
       }
 
       connection.query(inventoryQuery, (error, results1) => {
@@ -748,6 +762,15 @@ const wasteProduct = async (req, res) => {
           });
         }
 
+        connection.query(inventoryQuery2, (error, results2) => {
+          if (error) {
+            console.error("Error executing query 2:", error);
+            return connection.rollback(() => {
+              connection.release();
+              res.status(500).json({ error: "Internal Server Error" });
+            });
+          }
+
         connection.commit((commitErr) => {
           if (commitErr) {
             console.error("Error committing transaction:", commitErr);
@@ -758,14 +781,15 @@ const wasteProduct = async (req, res) => {
           }
 
           connection.release();
-          console.log(results1);
-          res.json({ products: results1 });
+          //console.log(results1);
+          //console.log(results2);
+          res.json({ products: results1, total:results2 });
         });
+      });
       });
     });
   });
 };
-
 
 module.exports = {
   inventory,

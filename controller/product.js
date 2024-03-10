@@ -337,7 +337,6 @@ const inventory = async (req, res) => {
   });
 };
 
-
 const oneProduct = async (req, res) => {
   const inventory = `
     SELECT
@@ -578,9 +577,6 @@ const sendImage = async (req, res) => {
 
   if (productType) {
     queryParams.push(`product_type LIKE '%${productType}%'`);
-  }
-  if (status) {
-    queryParams.push(`status = '${status}'`);
   }
   if (costPriceMin) {
     queryParams.push(`Final_cost >= ${costPriceMin}`);

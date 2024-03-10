@@ -235,7 +235,8 @@ const inventory = async (req, res) => {
           COUNT(p.product_id) AS Total_Products,
           SUM(p.Stock) AS Total_Stock,
           SUM(p.Final_cost) AS Total_Final_Cost,
-          count(p.product_type) as Product_Type
+          count(distinct p.product_type) as Product_Type,
+          Sum(p.product_price) as Selling_Price
         FROM
           products p
           WHERE p.status = 'Active'AND p.Stock > 0 
@@ -569,7 +570,9 @@ const sendImage = async (req, res) => {
   const queryParams = []; // Initialize queryParams array here
 
   let query = `SELECT product_id, product_image, product_type, status, Final_cost
-  FROM products`;
+  FROM products
+   WHERE status = 'Active'AND Stock > 0
+  `;
 
   // Construct the WHERE clause based on the provided filters
 
@@ -600,9 +603,11 @@ const sendImage = async (req, res) => {
   }
 
   if (queryParams.length > 0) {
-    query += " WHERE " + queryParams.join(" AND ");
-  }
-
+        query += " AND " + queryParams.join(" AND ") 
+        
+        ;
+      }
+  
   query += " ORDER BY created_at DESC"; // Add ORDER BY clause here
 
   pool.query(query, async (err, results) => {
@@ -693,7 +698,8 @@ const wasteProduct = async (req, res) => {
           COUNT(p.product_id) AS Total_Products,
           SUM(p.Stock) AS Total_Stock,
           SUM(p.Final_cost) AS Total_Final_Cost,
-          count(p.product_type) as Product_Type
+          count(p.product_type) as Product_Type,
+          sum(p.product_price) as Selling_Price
         FROM
           products p
           WHERE (p.status != 'Active' AND p.status != 'InActive') OR p.Stock = 0

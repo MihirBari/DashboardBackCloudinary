@@ -495,14 +495,10 @@ const viewOrder = async (req, res) => {
 
       let query1 = `
       SELECT 
-       COUNT(oi.order_id) AS order_count,
-       COUNT(DISTINCT oi.Total_items) AS total_items,
-       SUM(oi.amount_sold) AS total_amount_sold,
-       COUNT(DISTINCT oi.amount_condition) AS amount_condition_count,
-       COUNT(DISTINCT oi.paid_by) AS paid_by_count,
-       COUNT(DISTINCT oi.bank_payment) AS bank_payment_count,
-       COUNT(DISTINCT oi.city) AS city_count,
-       SUM(oi.bank_payment - p.Final_cost) AS total_profit
+       COUNT(oi.order_id) AS Order_Count,
+       SUM(oi.amount_sold) AS Total_Amount_Sold,
+       COUNT(DISTINCT oi.amount_condition) AS Amount_Condition_Count,
+       SUM(oi.bank_payment - p.Final_cost) AS Total_Profit
        FROM
        order_items oi
        JOIN
@@ -550,11 +546,11 @@ const viewOrder = async (req, res) => {
       }
 
       if (amountCredited) {
-        inventoryQuery.push(`oi.amount_condition = '${amountCredited}' AND `);
+        inventoryQuery.push(`oi.amount_condition = '${amountCredited}' `);
       }
 
       if (returned) {
-        inventoryQuery.push(`oi.returned = '${returned}' AND `);
+        inventoryQuery.push(`oi.returned = '${returned}' `);
       }
 
       if (city && Array.isArray(city)) {
@@ -568,13 +564,13 @@ const viewOrder = async (req, res) => {
 
       if (size && Array.isArray(size)) {
         const sizeConditions = size.map(
-          (type) => `oi.Total_items LIKE '%${type}%'`
+          (type) => `oi.Total_items LIKE '${type}'`
         );
         if (sizeConditions.length > 0) {
           inventoryQuery.push(`(${sizeConditions.join(" OR ")})`);
         }
       } else if (size) {
-        inventoryQuery.push(`	oi.Total_items LIKE '%${size}%'`);
+        inventoryQuery.push(`	oi.Total_items LIKE '${size}'`);
       }
 
       if (costPriceMin && costPriceMax) {
